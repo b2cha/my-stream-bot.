@@ -12,16 +12,19 @@ base_url = os.environ.get("BASE_URL")
 app = Quart(__name__)
 bot = TelegramClient('bot_session', api_id, api_hash)
 
-# --- UNSTOPPABLE DOWNLOADER (Har Quality Chalegi) ---
+# --- UNIVERSAL DOWNLOADER (No Format Errors) ---
 def download_video(url):
     ydl_opts = {
-        # 'best' ka matlab hai jo bhi format mile wo utha lo, error mat do
-        'format': 'best', 
+        # 'b' ka matlab hai sabse basic video format uthao bina nakhre kiye
+        'format': 'b/best', 
         'outtmpl': 'video.mp4',
         'quiet': True,
         'no_warnings': True,
+        'ignoreerrors': True,
     }
-    if os.path.exists('cookies.txt'): 
+    
+    # Agar aapne cookies.txt upload ki hogi, toh ye use karega
+    if os.path.exists('cookies.txt'):
         ydl_opts['cookiefile'] = 'cookies.txt'
         
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -37,6 +40,11 @@ async def handler(event):
             if event.raw_text.startswith('http'):
                 loop = asyncio.get_event_loop()
                 file_path = await loop.run_in_executor(None, download_video, event.raw_text)
+                
+                # Check agar file download hui ya nahi
+                if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
+                    raise Exception("Facebook ne block kiya hai. Cookies ki zaroorat pad sakti hai.")
+
                 sent = await bot.send_file(event.chat_id, file_path, caption="✅ **Video Downloaded!**")
                 msg_id = sent.id
                 if os.path.exists(file_path): os.remove(file_path)
@@ -58,9 +66,9 @@ async def handler(event):
             await status_msg.edit(final_text)
 
         except Exception as e:
-            await status_msg.edit(f"❌ **Error:**\n`{str(e)}`")
+            await status_msg.edit(f"❌ **Error:**\n`{str(e)}` \n\n*Solution: Agar video private hai toh cookies.txt upload karein.*")
 
-# --- MASTER STREAMING CONTROLLER (Bina Ruke Chalega) ---
+# --- MASTER STREAMING CONTROLLER ---
 @app.route('/stream/<int:chat_id>/<int:msg_id>')
 async def stream(chat_id, msg_id):
     try:
